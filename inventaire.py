@@ -2,6 +2,33 @@ import json
 from pathlib import Path
 
 
+def read_non_empty_text(value):
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError("Le texte ne peut pas être vide.")
+    return cleaned
+
+
+def parse_positive_int(value):
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("La valeur doit être un nombre entier valide.") from exc
+    if number < 0:
+        raise ValueError("La valeur doit être supérieure ou égale à 0.")
+    return number
+
+
+def parse_positive_float(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("La valeur doit être un nombre valide.") from exc
+    if number < 0:
+        raise ValueError("La valeur doit être supérieure ou égale à 0.")
+    return number
+
+
 def load_products(file_path="inventaire.json"):
     path = Path(file_path)
     if not path.exists():
@@ -59,6 +86,14 @@ def update_quantity(products, nom, nouvelle_quantite):
     return products
 
 
+def delete_product(products, nom):
+    for produit in products:
+        if produit["nom"].lower() == nom.lower():
+            products.remove(produit)
+            return True
+    return False
+
+
 def afficher_produits(products):
     if not products:
         print("Aucun produit en stock.")
@@ -84,20 +119,24 @@ def menu():
         print("2. Afficher les produits")
         print("3. Rechercher un produit")
         print("4. Mettre à jour la quantité")
-        print("5. Produits en rupture / faible stock")
-        print("6. Quitter")
+        print("5. Supprimer un produit")
+        print("6. Produits en rupture / faible stock")
+        print("7. Quitter")
 
         choix = input("Votre choix : ")
 
         if choix == "1":
-            nom = input("Nom du produit : ")
-            categorie = input("Catégorie : ")
-            quantite = int(input("Quantité : "))
-            prix = float(input("Prix : "))
-            seuil = int(input("Seuil d'alerte : "))
-            add_product(products, nom, categorie, quantite, prix, seuil)
-            save_products(products)
-            print("Produit ajouté.")
+            try:
+                nom = read_non_empty_text(input("Nom du produit : "))
+                categorie = read_non_empty_text(input("Catégorie : "))
+                quantite = parse_positive_int(input("Quantité : "))
+                prix = parse_positive_float(input("Prix : "))
+                seuil = parse_positive_int(input("Seuil d'alerte : "))
+                add_product(products, nom, categorie, quantite, prix, seuil)
+                save_products(products)
+                print("Produit ajouté.")
+            except ValueError as exc:
+                print(f"Erreur : {exc}")
 
         elif choix == "2":
             afficher_produits(products)
@@ -111,20 +150,34 @@ def menu():
                 afficher_produits(resultats)
 
         elif choix == "4":
-            nom = input("Nom du produit à mettre à jour : ")
-            nouvelle_qte = int(input("Nouvelle quantité : "))
-            update_quantity(products, nom, nouvelle_qte)
-            save_products(products)
-            print("Quantité mise à jour.")
+            try:
+                nom = read_non_empty_text(input("Nom du produit à mettre à jour : "))
+                nouvelle_qte = parse_positive_int(input("Nouvelle quantité : "))
+                update_quantity(products, nom, nouvelle_qte)
+                save_products(products)
+                print("Quantité mise à jour.")
+            except ValueError as exc:
+                print(f"Erreur : {exc}")
 
         elif choix == "5":
+            try:
+                nom = read_non_empty_text(input("Nom du produit à supprimer : "))
+                if delete_product(products, nom):
+                    save_products(products)
+                    print("Produit supprimé.")
+                else:
+                    print("Produit introuvable.")
+            except ValueError as exc:
+                print(f"Erreur : {exc}")
+
+        elif choix == "6":
             alertes = low_stock_products(products)
             if not alertes:
                 print("Aucune alerte de stock.")
             else:
                 afficher_produits(alertes)
 
-        elif choix == "6":
+        elif choix == "7":
             print("Au revoir !")
             break
 
